@@ -1,5 +1,5 @@
 """
-@package    html_writer
+@package    htmlwriter
 @brief      A class representing an HTML document
 
 @date       8/2/2024
@@ -49,6 +49,7 @@ class Document:
         self.dom_tree = []
         self.js = ''
         self.external_js = []
+        self.max_id = 0
 
     def get_by_id(self, search_id: str) -> Node | None:
         """
