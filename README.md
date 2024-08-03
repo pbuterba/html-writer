@@ -1,2 +1,2 @@
-# html-writer
+# htmlwriter
 Python package for writing HTML files
