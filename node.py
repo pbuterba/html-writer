@@ -285,6 +285,10 @@ class Node:
             for node in self.content:
                 if 'id' in node.attributes.keys() and node.attributes['id'] == search_id:
                     return node
+                if type(node.content) is list:
+                    sub_node = node.get_by_id(search_id)
+                    if sub_node is not None:
+                        return sub_node
             return None
 
     def get_by_class_name(self, class_name: str) -> List:
@@ -298,6 +302,8 @@ class Node:
             for node in self.content:
                 if 'class' in node.attributes.keys() and class_name in node.attributes['class']:
                     matching_nodes.append(node)
+                if type(node.content) is list:
+                    matching_nodes = matching_nodes + node.get_by_class_name(class_name)
         return matching_nodes
 
     def get_by_tag_name(self, tag_name: str) -> List:
@@ -311,6 +317,8 @@ class Node:
             for node in self.content:
                 if node.tag_name == tag_name:
                     matching_nodes.append(node)
+                if type(node.content) is list:
+                    matching_nodes = matching_nodes + node.get_by_tag_name(tag_name)
         return matching_nodes
 
     # Functions for mutating node content

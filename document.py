@@ -12,6 +12,7 @@ from enum import Enum
 from typing import List, Dict
 
 from htmlwriter.node import Node
+from htmlwriter.exceptions import DOMTreeException
 
 
 class Doctype(Enum):
@@ -57,7 +58,14 @@ class Document:
         @param  search_id (str): The ID of the node to retrieve
         @return (Node or None) The matching DOM node, or None if no node with that ID is found
         """
-        pass
+        for node in self.dom_tree:
+            if 'id' in node.attributes.keys() and node.attributes['id'] == search_id:
+                return node
+            if type(node.content) is list:
+                sub_node = node.get_by_id(search_id)
+                if sub_node is not None:
+                    return sub_node
+        return None
 
     def get_by_class_name(self, class_name: str) -> List:
         """
@@ -66,7 +74,13 @@ class Document:
         @param  class_name (str): The class name to search for
         @return (List) A list containing all nodes matching the specified class name
         """
-        pass
+        matching_nodes = []
+        for node in self.dom_tree:
+            if 'class' in node.attributes().keys() and class_name in node.attributes['class']:
+                matching_nodes.append(node)
+            if type(node.content) is list:
+                matching_nodes = matching_nodes + node.get_by_class_name(class_name)
+        return matching_nodes
 
     def get_by_tag_name(self, tag_name: str) -> List:
         """
@@ -75,7 +89,13 @@ class Document:
         @param  tag_name (str): The name of the HTML tag to search for
         @return (List) A list of all nodes of the specified tag type
         """
-        pass
+        matching_nodes = []
+        for node in self.dom_tree:
+            if node.tag_name == tag_name:
+                matching_nodes.append(node)
+            if type(node.content) is list:
+                matching_nodes = matching_nodes + node.get_by_tag_name(tag_name)
+        return matching_nodes
 
     def insert_before(self, before_node: Node, new_node: Node):
         """
@@ -84,14 +104,30 @@ class Document:
         @param  before_node (Node): The node before which the new node should be inserted
         @param  new_node    (Node): The node to be inserted
         """
-        pass
+        # Find the node to insert before
+        before_index = -1
+        for i, node in enumerate(self.dom_tree):
+            if node.id == before_node.id:
+                before_index = i
+                break
+
+        # Raise exception if node was not found
+        if before_index == -1:
+            raise DOMTreeException('Failed to insert node. The node to insert before is not a child of document.body')
+
+        # Insert node
+        self.max_id = self.max_id + 1
+        new_node.id = str(self.max_id)
+        self.dom_tree = self.dom_tree[0:before_index] + [new_node] + self.dom_tree[before_index:]
 
     def append_child(self, new_node: Node):
         """
         @brief  Mimics the JavaScript "document.appendChild()" method, by inserting a new HTML node to the end of the DOM tree
         @param  new_node (Node): The node to be inserted
         """
-        pass
+        self.max_id = self.max_id + 1
+        new_node.id = str(self.max_id)
+        self.dom_tree.append(new_node)
 
     def export(self, filepath: str = 'index.html', indent: str = '    ', line_limit: int = 185):
         """
