@@ -168,7 +168,7 @@ class Document:
         # Find the node to insert before
         before_index = -1
         for i, node in enumerate(self.dom_tree):
-            if node.id == before_node.id:
+            if node.node_id == before_node.node_id:
                 before_index = i
                 break
 
@@ -178,7 +178,7 @@ class Document:
 
         # Insert node
         self.max_id = self.max_id + 1
-        new_node.id = str(self.max_id)
+        new_node.node_id = str(self.max_id)
         self.dom_tree = self.dom_tree[0:before_index] + [new_node] + self.dom_tree[before_index:]
 
     def append_child(self, new_node: Node):
@@ -187,7 +187,7 @@ class Document:
         @param  new_node (Node): The node to be inserted
         """
         self.max_id = self.max_id + 1
-        new_node.id = str(self.max_id)
+        new_node.node_id = str(self.max_id)
         self.dom_tree.append(new_node)
 
     def export(self, filepath: str = 'index.html', indent: str = '    ', line_limit: int = 185):

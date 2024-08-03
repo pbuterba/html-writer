@@ -41,7 +41,7 @@ class Node:
             content = []
 
         # Assign field values
-        self.id = None
+        self.node_id = None
         self.tag_name = tag_name
         self.attributes = attributes
         self.content = content
@@ -345,7 +345,7 @@ class Node:
             # Find node to insert before
             before_index = -1
             for i, node in enumerate(self.content):
-                if node.id == before_node.id:
+                if node.node_id == before_node.node_id:
                     before_index = i
                     break
 
@@ -355,7 +355,7 @@ class Node:
 
             # Insert node
             self.max_id = self.max_id + 1
-            insert_node.id = self.max_id
+            insert_node.node_id = self.max_id
             self.content = self.content[0:before_index] + [insert_node] + self.content[before_index:]
 
     def append_child(self, append_node: Node):
@@ -372,7 +372,7 @@ class Node:
             if type(self.content) is str:
                 self.content = []
             self.max_id = self.max_id + 1
-            append_node.id = f'{self.id}>{self.max_id}'
+            append_node.node_id = f'{self.node_id}>{self.max_id}'
             self.content.append(append_node)
 
     def remove_child(self, remove_node: Node):
@@ -389,7 +389,7 @@ class Node:
             # Find node to remove
             remove_index = -1
             for i, node in enumerate(self.content):
-                if node.id == remove_node.id:
+                if node.node_id == remove_node.node_id:
                     remove_index = i
                     break
 
