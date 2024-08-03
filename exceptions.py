@@ -18,7 +18,7 @@ class HTMLWriterException(Exception):
 
 class NodeTypeException(Exception):
     """
-    @brief  Exception for a mismatch between expected and actual node types (text, tree, or contentless)
+    @brief  Exception for a mismatch between expected and actual node types (text, tree, or self-closing tag)
     """
     pass
 

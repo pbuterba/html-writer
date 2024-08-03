@@ -15,6 +15,14 @@ from typing import List, Dict
 from htmlwriter.exceptions import NodeTypeException, DOMTreeException
 
 
+SELF_CLOSING_TAGS = [
+    'img',
+    'br',
+    'hr',
+    'input'
+]
+
+
 class Node:
     """
     @brief  Class representing an HTML node
@@ -29,7 +37,7 @@ class Node:
         # Handle parameter defaults
         if attributes is None:
             attributes = {}
-        if content is None:
+        if content is None and tag_name not in SELF_CLOSING_TAGS:
             content = []
 
         # Assign field values
@@ -264,7 +272,7 @@ class Node:
     def get_child_nodes(self) -> List | None:
         """
         @brief  Returns a list of all the node's child nodes
-        @return A list of all child nodes, or none if it is a text or contentless node
+        @return A list of all child nodes, or none if it is a text node or a self-closing tag
         """
         if self.content is None or (type(self.content) is str and self.content != ''):
             return None
@@ -332,7 +340,7 @@ class Node:
         if type(self.content) is str and self.content != '':
             raise NodeTypeException('Cannot insert an HTML node into a node with text content')
         elif self.content is None:
-            raise NodeTypeException('Cannot insert an HTML node into a contentless node')
+            raise NodeTypeException('Cannot insert an HTML node into a self-closing tag')
         else:
             # Find node to insert before
             before_index = -1
@@ -359,7 +367,7 @@ class Node:
         if type(self.content) is str and self.content != '':
             raise NodeTypeException('Cannot insert HTML node into text node')
         elif self.content is None:
-            raise NodeTypeException('Cannot insert HTML node into contentless node')
+            raise NodeTypeException('Cannot insert HTML node into self-closing tag')
         else:
             if type(self.content) is str:
                 self.content = []
@@ -376,7 +384,7 @@ class Node:
         if type(self.content) is str:
             raise NodeTypeException('Cannot remove HTML element from text node')
         elif self.content is None:
-            raise NodeTypeException('Cannot remove HTML element from contentless node')
+            raise NodeTypeException('Cannot remove HTML element from self-closing tag')
         else:
             # Find node to remove
             remove_index = -1
