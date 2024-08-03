@@ -12,7 +12,7 @@ from enum import Enum
 from typing import List, Dict
 
 from htmlwriter.node import Node
-from htmlwriter.exceptions import DOMTreeException
+from htmlwriter.exceptions import HTMLWriterException, DOMTreeException
 
 
 class Doctype(Enum):
@@ -51,6 +51,67 @@ class Document:
         self.js = ''
         self.external_js = []
         self.max_id = 0
+
+    def add_metadata(self, metadata: Dict):
+        """
+        @brief  Adds a new meta tag to the document
+        @param  metadata (Dict): Key-value pairs corresponding to attributes and values of the meta tag
+        """
+        self.metadata.append(metadata)
+
+    def remove_metadata(self, key: str, value: str):
+        """
+        @brief  Removes a metadata attribute from the document
+        @param  key   (str): The name of a metadata attribute to remove
+        @param  value (str): The corresponding value of the metadata attribute to remove
+        """
+        removed = False
+        for meta_tag in self.metadata:
+            for attribute in meta_tag.keys():
+                if attribute == key and meta_tag[attribute] == value:
+                    meta_tag.pop(attribute, None)
+                    removed = True
+                    if len(meta_tag) == 0:
+                        self.metadata.remove(meta_tag)
+                    break
+            if removed:
+                break
+
+    def add_css_file(self, filename: str):
+        """
+        @brief  Adds a new CSS file to the document's list
+        @param  filename (str): The name of the CSS file being added
+        """
+        if filename not in self.css:
+            self.css.append(filename)
+
+    def remove_css_file(self, filename: str):
+        """
+        @brief  Removes a CSS file from the document's list
+        @param  filename (str): The name of the file to remove
+        """
+        if filename in self.css:
+            self.css.remove(filename)
+        else:
+            raise HTMLWriterException(f'Cannot remove CSS file "{filename}", as it is not one of the document\'s CSS files')
+
+    def add_script_file(self, filename: str):
+        """
+        @brief  Adds a new JavaScript file to the document's list
+        @param  filename (str): The name of the JavaScript file being added
+        """
+        if filename not in self.external_js:
+            self.external_js.append(filename)
+
+    def remove_script_file(self, filename: str):
+        """
+        @brief  Removes a JavaScript file from the document's list
+        @param  filename (str): The name of the file to remove
+        """
+        if filename in self.external_js:
+            self.external_js.remove(filename)
+        else:
+            raise HTMLWriterException(f'Cannot remove script file "{filename}", as it is not one of the document\'s script files')
 
     def get_by_id(self, search_id: str) -> Node | None:
         """
@@ -136,4 +197,109 @@ class Document:
         @param  indent     (str): A string to use for each indentation in the document. Defaults to four spaces
         @param  line_limit (int): The number of characters after which to wrap a line if possible. Defaults to 185 characters
         """
-        pass
+        curr_indent = ''
+        try:
+            with open(filepath, 'w') as file:
+                # Set doctype
+                if self.doctype == Doctype.HTML5:
+                    file.write(f'<!DOCTYPE html>')
+                elif self.doctype == Doctype.HTML4:
+                    file.write('<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">')
+                else:
+                    file.write('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">')
+
+                # Open html and head tags
+                file.write(f'\n{curr_indent}<html>')
+                curr_indent = f'{curr_indent}{indent}'
+                file.write(f'\n{curr_indent}<head>')
+                curr_indent = f'{curr_indent}{indent}'
+
+                # Write meta tags
+                for meta_tag in self.metadata:
+                    file.write(f'\n{curr_indent}<meta')
+                    for attribute in meta_tag.keys():
+                        file.write(f' {attribute}="{meta_tag[attribute]}"')
+                    file.write(' />')
+
+                # Write title tag
+                file.write(f'\n{curr_indent}<title>{self.title}</title>')
+
+                # Write internal CSS
+                if self.internal_css:
+                    file.write(f'\n{curr_indent}<style>')
+                    curr_indent = f'{curr_indent}{indent}'
+                    file.write(f'\n{curr_indent}{self.internal_css}')
+                    curr_indent = curr_indent[0:len(curr_indent) - len(indent)]
+                    file.write(f'\n{curr_indent}</style>')
+
+                # Create link tags for external CSS
+                for css_file in self.css:
+                    file.write(f'\n{curr_indent}<link rel="stylesheet" href="{css_file}" />')
+
+                # Close head tag and open body tag
+                curr_indent = curr_indent[0:len(curr_indent) - len(indent)]
+                file.write(f'\n{curr_indent}</head>')
+                if len(self.dom_tree) == 0:
+                    file.write(f'\n{curr_indent}<body />')
+                else:
+                    file.write(f'\n{curr_indent}<body>')
+
+                # Write body
+                curr_indent = f'{curr_indent}{indent}'
+                body_text = ''
+                for node in self.dom_tree:
+                    file.write(tag_content(node, curr_indent, indent, line_limit))
+                curr_indent = curr_indent[0:len(curr_indent) - len(indent)]
+
+                # Close body tag
+                if self.dom_tree:
+                    file.write(f'\n{curr_indent}</body>')
+
+                # Close html tag
+                curr_indent = curr_indent[0:len(curr_indent) - len(indent)]
+                file.write(f'\n{curr_indent}</html>')
+        except FileExistsError:
+            print(f'Failed to create file {filepath}. A file with that name already exists')
+        except PermissionError:
+            print(f'Failed to create file {filepath}. You may not have permission to create files in this location')
+
+
+def tag_content(tag: Node, indent: str, indent_increment: str, line_limit: int) -> str:
+    """
+    @brief  Compiles a Node object into HTML text, given export file information
+    @param  tag              (Node): The tag to parse
+    @param  indent           (str): The current indentation level of the document
+    @param  indent_increment (str): The text to add on to the indent when increasing indent level
+    @param  line_limit       (int): The maximum number of characters to put on a single line before wrapping if possible
+    @return (str) The HTML text of the tag
+    """
+    # Write opening tag
+    text = f'\n{indent}<{tag.tag_name}'
+    for attribute in tag.attributes.keys():
+        text = f'{text} {attribute}="{tag.attributes[attribute]}"'
+    if tag.content is None:
+        text = f'{text} /'
+    text = f'{text}>'
+
+    # Check the tag type (text or tree)
+    if type(tag.content) is str:
+        # Check if it fits on a single line
+        if len(f'{text}{tag.content}</{tag.tag_name}>') <= line_limit:
+            text = f'{text}{tag.content}</{tag.tag_name}>'
+        else:
+            indent = f'{indent}{indent_increment}'
+            remaining_content = tag.content
+            while len(f'{indent}{remaining_content}') > line_limit:
+                single_line = remaining_content[0:line_limit]
+                remaining_content = remaining_content[line_limit:]
+                text = f'{text}\n{indent}{single_line}'
+            text = f'{text}\n{indent}{remaining_content}'
+            indent = indent[0:len(indent) - len(indent_increment)]
+            text = f'{text}\n{indent}</{tag.tag_name}>'
+    else:
+        # The tag contains other tags
+        indent = f'{indent}{indent_increment}'
+        for child_tag in tag.content:
+            text = f'{text}{tag_content(child_tag, indent, indent_increment, line_limit)}'
+
+    return text
