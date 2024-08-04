@@ -50,7 +50,7 @@ class Document:
         self.dom_tree = []
         self.js = ''
         self.external_js = []
-        self.max_id = 0
+        self._max_id = 0
 
     def add_metadata(self, metadata: Dict):
         """
@@ -59,17 +59,17 @@ class Document:
         """
         self.metadata.append(metadata)
 
-    def remove_metadata(self, key: str, value: str):
+    def remove_metadata(self, attribute: str, value: str):
         """
         @brief  Removes a metadata attribute from the document
-        @param  key   (str): The name of a metadata attribute to remove
-        @param  value (str): The corresponding value of the metadata attribute to remove
+        @param  attribute (str): The name of a metadata attribute to remove
+        @param  value     (str): The corresponding value of the metadata attribute to remove
         """
         removed = False
         for meta_tag in self.metadata:
-            for attribute in meta_tag.keys():
-                if attribute == key and meta_tag[attribute] == value:
-                    meta_tag.pop(attribute, None)
+            for key in meta_tag.keys():
+                if key == attribute and meta_tag[key] == value:
+                    meta_tag.pop(key, None)
                     removed = True
                     if len(meta_tag) == 0:
                         self.metadata.remove(meta_tag)
@@ -168,7 +168,7 @@ class Document:
         # Find the node to insert before
         before_index = -1
         for i, node in enumerate(self.dom_tree):
-            if node.node_id == before_node.node_id:
+            if node._node_id == before_node._node_id:
                 before_index = i
                 break
 
@@ -177,8 +177,8 @@ class Document:
             raise DOMTreeException('Failed to insert node. The node to insert before is not a child of document.body')
 
         # Insert node
-        self.max_id = self.max_id + 1
-        new_node.node_id = str(self.max_id)
+        self._max_id = self._max_id + 1
+        new_node._update_node_ids(str(self._max_id))
         self.dom_tree = self.dom_tree[0:before_index] + [new_node] + self.dom_tree[before_index:]
 
     def append_child(self, new_node: Node):
@@ -186,9 +186,27 @@ class Document:
         @brief  Mimics the JavaScript "document.appendChild()" method, by inserting a new HTML node to the end of the DOM tree
         @param  new_node (Node): The node to be inserted
         """
-        self.max_id = self.max_id + 1
-        new_node.node_id = str(self.max_id)
+        self._max_id = self._max_id + 1
+        new_node._update_node_ids(str(self._max_id))
         self.dom_tree.append(new_node)
+
+    def remove_child(self, remove_node: Node):
+        """
+        @brief  Mimics the JavaScript "document.removeChild()" method, by removing an HTML node from the DOM tree
+        @param  remove_node (str): The node to remove
+        """
+        # Find node to remove
+        remove_index = -1
+        for i, node in enumerate(self.dom_tree):
+            if node._node_id == remove_node._node_id:
+                remove_index = i
+                break
+
+        # Raise exception if node not found
+        if remove_index == -1:
+            raise DOMTreeException('Node removal failed. The node to be removed is not a child of document.body')
+
+        self.dom_tree.pop(remove_index)
 
     def export(self, filepath: str = 'index.html', indent: str = '    ', line_limit: int = 185):
         """
@@ -246,7 +264,6 @@ class Document:
 
                 # Write body
                 curr_indent = f'{curr_indent}{indent}'
-                body_text = ''
                 for node in self.dom_tree:
                     file.write(tag_content(node, curr_indent, indent, line_limit))
                 curr_indent = curr_indent[0:len(curr_indent) - len(indent)]
@@ -264,19 +281,28 @@ class Document:
             print(f'Failed to create file {filepath}. You may not have permission to create files in this location')
 
 
-def tag_content(tag: Node, indent: str, indent_increment: str, line_limit: int) -> str:
+def tag_content(tag: Node, indent: str, indent_increment: str, line_limit: int, inline: bool = False) -> str:
     """
     @brief  Compiles a Node object into HTML text, given export file information
     @param  tag              (Node): The tag to parse
-    @param  indent           (str): The current indentation level of the document
-    @param  indent_increment (str): The text to add on to the indent when increasing indent level
-    @param  line_limit       (int): The maximum number of characters to put on a single line before wrapping if possible
+    @param  indent           (str):  The current indentation level of the document
+    @param  indent_increment (str):  The text to add on to the indent when increasing indent level
+    @param  line_limit       (int):  The maximum number of characters to put on a single line before wrapping if possible
+    @param  inline           (bool): If no newline should be included before the tag's contents
     @return (str) The HTML text of the tag
     """
     # Write opening tag
-    text = f'\n{indent}<{tag.tag_name}'
+    if inline:
+        text = ''
+    else:
+        text = f'\n{indent}'
+    text = f'{text}<{tag.tag_name}'
     for attribute in tag.attributes.keys():
-        text = f'{text} {attribute}="{tag.attributes[attribute]}"'
+        if attribute == 'class':
+            value = ' '.join(tag.attributes[attribute])
+        else:
+            value = tag.attributes[attribute]
+        text = f'{text} {attribute}="{value}"'
     if tag.content is None:
         text = f'{text} /'
     text = f'{text}>'
@@ -296,10 +322,23 @@ def tag_content(tag: Node, indent: str, indent_increment: str, line_limit: int) 
             text = f'{text}\n{indent}{remaining_content}'
             indent = indent[0:len(indent) - len(indent_increment)]
             text = f'{text}\n{indent}</{tag.tag_name}>'
-    else:
-        # The tag contains other tags
-        indent = f'{indent}{indent_increment}'
-        for child_tag in tag.content:
-            text = f'{text}{tag_content(child_tag, indent, indent_increment, line_limit)}'
+    elif tag.content is not None:
+        # Anchor tags containing only one tag are printed on the same line
+        if tag.tag_name == 'a' and len(tag.content) == 1:
+            text = f'{text}<a'
+            for attribute in tag.attributes.keys():
+                if attribute == 'class':
+                    value = ' '.join(tag.attributes[attribute])
+                else:
+                    value = tag.attributes[attribute]
+                text = f'{text} {attribute}="{value}"'
+            text = f'{text}>{tag_content(tag.content[0], indent, indent_increment, line_limit, inline=True)}'
+            text = f'{text}</a>'
+        else:
+            indent = f'{indent}{indent_increment}'
+            for child_tag in tag.content:
+                text = f'{text}{tag_content(child_tag, indent, indent_increment, line_limit)}'
+            indent = indent[0:len(indent) - len(indent_increment)]
+            text = f'{text}\n{indent}</{tag.tag_name}>'
 
     return text

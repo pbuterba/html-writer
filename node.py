@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import List, Dict
 
-from htmlwriter.exceptions import NodeTypeException, DOMTreeException
+from htmlwriter.exceptions import NodeTypeException, DOMTreeException, AttributeTypeMismatch
 
 
 SELF_CLOSING_TAGS = [
@@ -20,6 +20,11 @@ SELF_CLOSING_TAGS = [
     'br',
     'hr',
     'input'
+]
+
+BOOLEAN_ATTRIBUTES = [
+    'checked',
+    'disabled'
 ]
 
 
@@ -40,12 +45,30 @@ class Node:
         if content is None and tag_name not in SELF_CLOSING_TAGS:
             content = []
 
+        # Check type of content
+        if type(content) is not str and type(content) is not list and type(content) is not None:
+            raise TypeError(f'Parameter "content" expected type <str>, <list>, or <None>, but got {type(content)}')
+        if type(content) is list:
+            for node in content:
+                if type(node) is not Node:
+                    raise TypeError(f'List value for parameter "content" should only contain Node objects, but contains {type(node)}')
+
         # Assign field values
-        self.node_id = None
+        self._node_id = 'Root'
         self.tag_name = tag_name
         self.attributes = attributes
         self.content = content
-        self.max_id = 0
+        self._max_id = 0
+
+    def _update_node_ids(self, new_id: str):
+        """
+        @brief  Updates the node's ID and the IDs of all child nodes
+        @param  new_id (str): The new ID being assigned to the root node
+        """
+        self._node_id = new_id
+        if type(self.content) is list:
+            for node in self.content:
+                node._update_node_ids(new_id)
 
     # Get/set functions for node identification attributes
     def id(self, new_id: str | None = None) -> str | None:
@@ -241,13 +264,29 @@ class Node:
         """
         if value is None:
             try:
+                if attribute == 'class':
+                    return ' '.join(self.attributes[attribute])
                 return self.attributes[attribute]
             except KeyError:
-                return None
+                if attribute in BOOLEAN_ATTRIBUTES:
+                    return False
+                else:
+                    return None
         elif value == '':
             self.attributes.pop(attribute, None)
             return None
         else:
+            # Type check supplied value
+            if attribute in BOOLEAN_ATTRIBUTES:
+                expected_type = bool
+            else:
+                expected_type = str
+            if type(value) is not expected_type:
+                raise AttributeTypeMismatch(f"Attribute '{attribute}' expects type '{expected_type}'. Got '{type(value)}'")
+
+            # Set attribute
+            if attribute == 'class':
+                value = value.split(' ')
             self.attributes[attribute] = value
             return value
 
@@ -345,7 +384,7 @@ class Node:
             # Find node to insert before
             before_index = -1
             for i, node in enumerate(self.content):
-                if node.node_id == before_node.node_id:
+                if node._node_id == before_node._node_id:
                     before_index = i
                     break
 
@@ -354,8 +393,8 @@ class Node:
                 raise DOMTreeException('Node insertion failed. Node to insert before is not a child of the node on which the insertion is to be made')
 
             # Insert node
-            self.max_id = self.max_id + 1
-            insert_node.node_id = self.max_id
+            self._max_id = self._max_id + 1
+            insert_node._update_node_ids(f'{self._node_id}>{self._max_id}')
             self.content = self.content[0:before_index] + [insert_node] + self.content[before_index:]
 
     def append_child(self, append_node: Node):
@@ -371,8 +410,8 @@ class Node:
         else:
             if type(self.content) is str:
                 self.content = []
-            self.max_id = self.max_id + 1
-            append_node.node_id = f'{self.node_id}>{self.max_id}'
+            self._max_id = self._max_id + 1
+            append_node._update_node_ids(f'{self._node_id}>{self._max_id}')
             self.content.append(append_node)
 
     def remove_child(self, remove_node: Node):
@@ -389,10 +428,12 @@ class Node:
             # Find node to remove
             remove_index = -1
             for i, node in enumerate(self.content):
-                if node.node_id == remove_node.node_id:
+                if node._node_id == remove_node._node_id:
                     remove_index = i
                     break
 
             # Raise exception if node not found
             if remove_index == -1:
                 raise DOMTreeException('Node removal failed. The node to be removed is not a child of the node to remove it from')
+
+            self.content.pop(remove_index)
