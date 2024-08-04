@@ -28,3 +28,10 @@ class DOMTreeException(Exception):
     @brief  An exception for unexpected conditions in a DOM tree
     """
     pass
+
+
+class AttributeTypeMismatch(Exception):
+    """
+    @brief  An exception for when attributes are set to values of the wrong type
+    """
+    pass
