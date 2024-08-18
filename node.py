@@ -46,7 +46,7 @@ class Node:
             content = []
 
         # Check type of content
-        if type(content) is not str and type(content) is not list and type(content) is not None:
+        if content is not None and type(content) is not str and type(content) is not list:
             raise TypeError(f'Parameter "content" expected type <str>, <list>, or <None>, but got {type(content)}')
         if type(content) is list:
             for node in content:
@@ -68,7 +68,7 @@ class Node:
         self._node_id = new_id
         if type(self.content) is list:
             for node in self.content:
-                node._update_node_ids(new_id)
+                node._update_node_ids(f'{new_id}{node._node_id[4:]}')
 
     # Get/set functions for node identification attributes
     def id(self, new_id: str | None = None) -> str | None:

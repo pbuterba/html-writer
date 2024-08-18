@@ -246,7 +246,9 @@ class Document:
                 if self.internal_css:
                     file.write(f'\n{curr_indent}<style>')
                     curr_indent = f'{curr_indent}{indent}'
-                    file.write(f'\n{curr_indent}{self.internal_css}')
+                    css_lines = self.internal_css.split('\n')
+                    for line in css_lines:
+                        file.write(f'\n{curr_indent}{line}')
                     curr_indent = curr_indent[0:len(curr_indent) - len(indent)]
                     file.write(f'\n{curr_indent}</style>')
 
@@ -266,9 +268,23 @@ class Document:
                 curr_indent = f'{curr_indent}{indent}'
                 for node in self.dom_tree:
                     file.write(tag_content(node, curr_indent, indent, line_limit))
-                curr_indent = curr_indent[0:len(curr_indent) - len(indent)]
+
+                # Write JavaScript
+                if self.js:
+                    file.write(f'\n{curr_indent}<script>')
+                    curr_indent = f'{curr_indent}{indent}'
+                    js_lines = self.js.split('\n')
+                    for line in js_lines:
+                        file.write(f'\n{curr_indent}{line}')
+                    curr_indent = curr_indent[0:len(curr_indent) - len(indent)]
+                    file.write(f'\n{curr_indent}</script>')
+
+                # External JS
+                for script_file in self.external_js:
+                    file.write(f'\n{curr_indent}<script src="{script_file}"></script>')
 
                 # Close body tag
+                curr_indent = curr_indent[0:len(curr_indent) - len(indent)]
                 if self.dom_tree:
                     file.write(f'\n{curr_indent}</body>')
 
@@ -298,7 +314,7 @@ def tag_content(tag: Node, indent: str, indent_increment: str, line_limit: int, 
         text = f'\n{indent}'
     text = f'{text}<{tag.tag_name}'
     for attribute in tag.attributes.keys():
-        if attribute == 'class':
+        if attribute == 'class' and type(tag.attributes[attribute]) is list:
             value = ' '.join(tag.attributes[attribute])
         else:
             value = tag.attributes[attribute]
