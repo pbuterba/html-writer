@@ -3,7 +3,7 @@
 @brief      A class representing an HTML document
 
 @date       8/2/2024
-@updated    8/3/2024
+@updated    8/17/2024
 
 @author     Preston Buterbaugh
 """

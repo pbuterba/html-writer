@@ -3,7 +3,7 @@
 @brief      Class representing an HTML node
 
 @date       8/3/2024
-@updated    8/3/2024
+@updated    8/17/2024
 
 @author     Preston Buterbaugh
 """

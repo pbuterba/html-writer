@@ -26,5 +26,5 @@ could be set on a `<p>` tag, when that attribute has no meaning for that tag, or
 programmatically generate HTML, and does not provide any sort of check on the quality of the code.
 
 ## Changelog
-+ v.1.0.0 - August 15th, 2024
++ v.1.0.0 - August 17th, 2024
   + Initial release

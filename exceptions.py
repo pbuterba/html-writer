@@ -3,7 +3,7 @@
 @brief      Contains custom exceptions to be used in the package
 
 @date       8/3/2024
-@updated    8/3/2024
+@updated    8/17/2024
 
 @author     Preston Buterbaugh
 """
