@@ -26,5 +26,8 @@ could be set on a `<p>` tag, when that attribute has no meaning for that tag, or
 programmatically generate HTML, and does not provide any sort of check on the quality of the code.
 
 ## Changelog
++ v.1.0.1 - December 20th, 2024
+  + Fixed critical bug with `get_by_class_name()` function
+  + Added check for unencodable characters when exporting HTML files, now replaced by "?" character
 + v.1.0.0 - August 17th, 2024
   + Initial release

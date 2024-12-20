@@ -137,7 +137,7 @@ class Document:
         """
         matching_nodes = []
         for node in self.dom_tree:
-            if 'class' in node.attributes().keys() and class_name in node.attributes['class']:
+            if 'class' in node.attributes.keys() and class_name in node.attributes['class']:
                 matching_nodes.append(node)
             if type(node.content) is list:
                 matching_nodes = matching_nodes + node.get_by_class_name(class_name)
@@ -217,7 +217,7 @@ class Document:
         """
         curr_indent = ''
         try:
-            with open(filepath, 'w') as file:
+            with open(filepath, 'w', errors='replace') as file:
                 # Set doctype
                 if self.doctype == Doctype.HTML5:
                     file.write(f'<!DOCTYPE html>')
